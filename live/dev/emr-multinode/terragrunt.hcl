@@ -3,11 +3,11 @@ include "root" {
 }
 
 terraform {
-  source = "../../..//modules/emr"
+  source = "../../..//modules/emr-multinode"
 }
 
 inputs = {
-  name      = "poc-emr-dev"
+  name      = "poc-emr-multinode-dev"
   subnet_id = "subnet-xxxxxxxx" # replace with a real subnet
   log_uri   = "s3://my-emr-logs-bucket-change-me/dev/"
 }

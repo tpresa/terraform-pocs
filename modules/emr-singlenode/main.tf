@@ -1,0 +1,88 @@
+terraform {
+  required_version = ">= 1.3"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = ">= 5.0"
+    }
+  }
+}
+
+data "aws_iam_policy_document" "ec2_assume" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    principals {
+      type        = "Service"
+      identifiers = ["ec2.amazonaws.com"]
+    }
+  }
+}
+
+data "aws_iam_policy_document" "emr_assume" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    principals {
+      type        = "Service"
+      identifiers = ["elasticmapreduce.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "emr_service" {
+  name               = "${var.name}-emr-service"
+  assume_role_policy = data.aws_iam_policy_document.emr_assume.json
+}
+
+resource "aws_iam_role_policy_attachment" "emr_service" {
+  role       = aws_iam_role.emr_service.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEMRServicePolicy_v2"
+}
+
+resource "aws_iam_role" "emr_ec2" {
+  name               = "${var.name}-emr-ec2"
+  assume_role_policy = data.aws_iam_policy_document.ec2_assume.json
+}
+
+resource "aws_iam_role_policy_attachment" "emr_ec2" {
+  role       = aws_iam_role.emr_ec2.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonElasticMapReduceforEC2Role"
+}
+
+resource "aws_iam_instance_profile" "emr_ec2" {
+  name = "${var.name}-emr-ec2"
+  role = aws_iam_role.emr_ec2.name
+}
+
+resource "aws_emr_cluster" "this" {
+  name          = var.name
+  release_label = var.release_label
+  applications  = var.applications
+
+  service_role         = aws_iam_role.emr_service.arn
+  log_uri              = var.log_uri
+  ebs_root_volume_size = 20
+
+  # Single-node clusters run YARN/HDFS on the master only, so HDFS replication
+  # must be 1 — the default of 3 would leave blocks under-replicated forever.
+  configurations_json = jsonencode([
+    {
+      Classification = "hdfs-site"
+      Properties = {
+        "dfs.replication" = "1"
+      }
+    }
+  ])
+
+  ec2_attributes {
+    subnet_id        = var.subnet_id
+    instance_profile = aws_iam_instance_profile.emr_ec2.arn
+  }
+
+  master_instance_group {
+    instance_type  = var.master_instance_type
+    instance_count = 1
+  }
+
+  keep_job_flow_alive_when_no_steps = true
+  visible_to_all_users              = true
+}

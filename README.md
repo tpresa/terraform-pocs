@@ -1,18 +1,24 @@
 # EMR + Terragrunt POC
 
-Minimal example of an AWS EMR cluster deployed via Terragrunt.
+Minimal examples of AWS EMR clusters deployed via Terragrunt, in two variants:
+
+- **emr-multinode** — 1 master + N core nodes (default 2).
+- **emr-singlenode** — master only, HDFS replication forced to 1.
 
 ## Layout
 
 ```
 .
-├── terragrunt.hcl              # root: S3 backend + AWS provider
+├── terragrunt.hcl                    # root: S3 backend + AWS provider
 ├── modules/
-│   └── emr/                    # local Terraform module (cluster + IAM)
+│   ├── emr-multinode/                # master + core_instance_group
+│   └── emr-singlenode/               # master only, dfs.replication=1
 └── live/
     └── dev/
-        └── emr/
-            └── terragrunt.hcl  # dev environment inputs
+        ├── emr-multinode/
+        │   └── terragrunt.hcl
+        └── emr-singlenode/
+            └── terragrunt.hcl
 ```
 
 ## Prerequisites
@@ -20,16 +26,31 @@ Minimal example of an AWS EMR cluster deployed via Terragrunt.
 - AWS credentials (`aws configure` or env vars)
 - Terraform >= 1.3, Terragrunt >= 0.50
 - An S3 bucket + DynamoDB table for remote state (edit the root `terragrunt.hcl`)
-- A VPC subnet ID and S3 bucket for EMR logs (edit `live/dev/emr/terragrunt.hcl`)
+- A VPC subnet ID and S3 bucket for EMR logs (edit the per-environment `terragrunt.hcl`)
 
 ## Deploy
 
+Pick a variant and apply it:
+
 ```bash
-cd live/dev/emr
+# multi-node
+cd live/dev/emr-multinode
 terragrunt init
 terragrunt plan
 terragrunt apply
 ```
+
+```bash
+# single-node
+cd live/dev/emr-singlenode
+terragrunt init
+terragrunt plan
+terragrunt apply
+```
+
+The two variants are independent — their state lives under separate keys
+(`live/dev/emr-multinode/...` and `live/dev/emr-singlenode/...`) so they can
+coexist in the same account.
 
 ## Destroy
 
