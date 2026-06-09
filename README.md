@@ -1,11 +1,12 @@
 # EMR + Terragrunt POC
 
-Minimal examples of AWS EMR deployed via Terragrunt, in four variants:
+Minimal examples of AWS EMR deployed via Terragrunt, in five variants:
 
 - **emr-multinode** — 1 master + N core nodes (default 2).
 - **emr-singlenode** — master only, HDFS replication forced to 1.
 - **emr-serverless** — no cluster; an EMR Serverless application that scales to zero when idle.
 - **emr-on-eks** — an EKS cluster + a virtual cluster registered against a namespace; jobs run as pods.
+- **emr-managed-scaling** — a cluster that EMR resizes automatically between min/max bounds.
 
 ## Layout
 
@@ -16,7 +17,8 @@ Minimal examples of AWS EMR deployed via Terragrunt, in four variants:
 │   ├── emr-multinode/                # master + core_instance_group
 │   ├── emr-singlenode/               # master only, dfs.replication=1
 │   ├── emr-serverless/               # serverless application, scales to zero
-│   └── emr-on-eks/                   # EKS cluster + EMR virtual cluster
+│   ├── emr-on-eks/                   # EKS cluster + EMR virtual cluster
+│   └── emr-managed-scaling/          # cluster + aws_emr_managed_scaling_policy
 └── live/
     └── dev/
         ├── emr-multinode/
@@ -25,7 +27,9 @@ Minimal examples of AWS EMR deployed via Terragrunt, in four variants:
         │   └── terragrunt.hcl
         ├── emr-serverless/
         │   └── terragrunt.hcl
-        └── emr-on-eks/
+        ├── emr-on-eks/
+        │   └── terragrunt.hcl
+        └── emr-managed-scaling/
             └── terragrunt.hcl
 ```
 
@@ -74,10 +78,18 @@ terragrunt plan
 terragrunt apply
 ```
 
+```bash
+# managed scaling
+cd live/dev/emr-managed-scaling
+terragrunt init
+terragrunt plan
+terragrunt apply
+```
+
 The variants are independent — their state lives under separate keys
 (`live/dev/emr-multinode/...`, `live/dev/emr-singlenode/...`,
-`live/dev/emr-serverless/...`, `live/dev/emr-on-eks/...`) so they can coexist in
-the same account.
+`live/dev/emr-serverless/...`, `live/dev/emr-on-eks/...`,
+`live/dev/emr-managed-scaling/...`) so they can coexist in the same account.
 
 ## Destroy
 
