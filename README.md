@@ -1,12 +1,13 @@
 # EMR + Terragrunt POC
 
-Minimal examples of AWS EMR deployed via Terragrunt, in five variants:
+Minimal examples of AWS EMR deployed via Terragrunt, in six variants:
 
 - **emr-multinode** — 1 master + N core nodes (default 2).
 - **emr-singlenode** — master only, HDFS replication forced to 1.
 - **emr-serverless** — no cluster; an EMR Serverless application that scales to zero when idle.
 - **emr-on-eks** — an EKS cluster + a virtual cluster registered against a namespace; jobs run as pods.
 - **emr-managed-scaling** — a cluster that EMR resizes automatically between min/max bounds.
+- **emr-instance-fleets** — instance fleets instead of groups: a diversified Spot + On-Demand mix with weighted capacity, plus an all-Spot task fleet.
 
 ## Layout
 
@@ -18,7 +19,8 @@ Minimal examples of AWS EMR deployed via Terragrunt, in five variants:
 │   ├── emr-singlenode/               # master only, dfs.replication=1
 │   ├── emr-serverless/               # serverless application, scales to zero
 │   ├── emr-on-eks/                   # EKS cluster + EMR virtual cluster
-│   └── emr-managed-scaling/          # cluster + aws_emr_managed_scaling_policy
+│   ├── emr-managed-scaling/          # cluster + aws_emr_managed_scaling_policy
+│   └── emr-instance-fleets/          # master/core/task fleets, Spot + On-Demand mix
 └── live/
     └── dev/
         ├── emr-multinode/
@@ -29,7 +31,9 @@ Minimal examples of AWS EMR deployed via Terragrunt, in five variants:
         │   └── terragrunt.hcl
         ├── emr-on-eks/
         │   └── terragrunt.hcl
-        └── emr-managed-scaling/
+        ├── emr-managed-scaling/
+        │   └── terragrunt.hcl
+        └── emr-instance-fleets/
             └── terragrunt.hcl
 ```
 
@@ -41,6 +45,7 @@ Minimal examples of AWS EMR deployed via Terragrunt, in five variants:
 - A VPC subnet ID and S3 bucket for EMR logs for the cluster variants (edit the per-environment `terragrunt.hcl`)
 - An S3 bucket for the serverless variant's job scripts/data (subnet optional)
 - Two subnets (different AZs) and an S3 bucket for the EMR-on-EKS variant; `kubectl` is not required (RBAC is applied by Terraform)
+- Two or more subnets (different AZs) for the instance-fleets variant — EMR picks the AZ with the best capacity/price
 
 ## Deploy
 
@@ -86,10 +91,19 @@ terragrunt plan
 terragrunt apply
 ```
 
+```bash
+# instance fleets
+cd live/dev/emr-instance-fleets
+terragrunt init
+terragrunt plan
+terragrunt apply
+```
+
 The variants are independent — their state lives under separate keys
 (`live/dev/emr-multinode/...`, `live/dev/emr-singlenode/...`,
 `live/dev/emr-serverless/...`, `live/dev/emr-on-eks/...`,
-`live/dev/emr-managed-scaling/...`) so they can coexist in the same account.
+`live/dev/emr-managed-scaling/...`, `live/dev/emr-instance-fleets/...`)
+so they can coexist in the same account.
 
 ## Destroy
 
