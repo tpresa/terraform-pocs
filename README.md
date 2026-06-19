@@ -1,6 +1,6 @@
 # EMR + Terragrunt POC
 
-Minimal examples of AWS EMR deployed via Terragrunt, in six variants:
+Minimal examples of AWS EMR deployed via Terragrunt, in seven variants:
 
 - **emr-multinode** — 1 master + N core nodes (default 2).
 - **emr-singlenode** — master only, HDFS replication forced to 1.
@@ -8,6 +8,7 @@ Minimal examples of AWS EMR deployed via Terragrunt, in six variants:
 - **emr-on-eks** — an EKS cluster + a virtual cluster registered against a namespace; jobs run as pods.
 - **emr-managed-scaling** — a cluster that EMR resizes automatically between min/max bounds.
 - **emr-instance-fleets** — instance fleets instead of groups: a diversified Spot + On-Demand mix with weighted capacity, plus an all-Spot task fleet.
+- **emr-steps** — a transient cluster that runs a step (SparkPi) and auto-terminates on completion; the only variant that actually runs a job.
 
 ## Layout
 
@@ -20,7 +21,8 @@ Minimal examples of AWS EMR deployed via Terragrunt, in six variants:
 │   ├── emr-serverless/               # serverless application, scales to zero
 │   ├── emr-on-eks/                   # EKS cluster + EMR virtual cluster
 │   ├── emr-managed-scaling/          # cluster + aws_emr_managed_scaling_policy
-│   └── emr-instance-fleets/          # master/core/task fleets, Spot + On-Demand mix
+│   ├── emr-instance-fleets/          # master/core/task fleets, Spot + On-Demand mix
+│   └── emr-steps/                    # transient cluster, runs a step then self-terminates
 └── live/
     └── dev/
         ├── emr-multinode/
@@ -33,7 +35,9 @@ Minimal examples of AWS EMR deployed via Terragrunt, in six variants:
         │   └── terragrunt.hcl
         ├── emr-managed-scaling/
         │   └── terragrunt.hcl
-        └── emr-instance-fleets/
+        ├── emr-instance-fleets/
+        │   └── terragrunt.hcl
+        └── emr-steps/
             └── terragrunt.hcl
 ```
 
@@ -99,10 +103,24 @@ terragrunt plan
 terragrunt apply
 ```
 
+```bash
+# steps (transient — runs SparkPi, then terminates itself)
+cd live/dev/emr-steps
+terragrunt init
+terragrunt plan
+terragrunt apply
+```
+
+> **Note:** `emr-steps` is transient. The apply succeeds once the cluster
+> reaches `RUNNING`, but the cluster terminates itself after the step finishes,
+> so a later `terragrunt plan` will show it wants to recreate the cluster —
+> Terraform expects a persistent resource, which an ephemeral job cluster isn't.
+
 The variants are independent — their state lives under separate keys
 (`live/dev/emr-multinode/...`, `live/dev/emr-singlenode/...`,
 `live/dev/emr-serverless/...`, `live/dev/emr-on-eks/...`,
-`live/dev/emr-managed-scaling/...`, `live/dev/emr-instance-fleets/...`)
+`live/dev/emr-managed-scaling/...`, `live/dev/emr-instance-fleets/...`,
+`live/dev/emr-steps/...`)
 so they can coexist in the same account.
 
 ## Destroy
